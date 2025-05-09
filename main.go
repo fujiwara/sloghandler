@@ -74,7 +74,11 @@ func (h *logHandler) Handle(ctx context.Context, record slog.Record) error {
 		buf.Write(h.preformatted)
 	}
 	record.Attrs(func(a slog.Attr) bool {
-		fprintf(buf, " [%s:%v]", a.Key, a.Value)
+		if a.Key == "" {
+			fprintf(buf, " [%v]", a.Value)
+		} else {
+			fprintf(buf, " [%s:%v]", a.Key, a.Value)
+		}
 		return true
 	})
 	fprintf(buf, " %s\n", record.Message)
