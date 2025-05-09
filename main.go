@@ -104,7 +104,12 @@ func (h *logHandler) Handle(ctx context.Context, record slog.Record) error {
 func (h *logHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
 	preformatted := []byte{}
 	for _, a := range attrs {
-		preformatted = append(preformatted, fmt.Sprintf(" [%s:%v]", a.Key, a.Value)...)
+		if a.Key == "" {
+			preformatted = append(preformatted, fmt.Sprintf(" [%v]", a.Value)...)
+		} else {
+			// Preformat the attribute key-value pair
+			preformatted = append(preformatted, fmt.Sprintf(" [%s:%v]", a.Key, a.Value)...)
+		}
 	}
 	return &logHandler{
 		opts:         h.opts,
