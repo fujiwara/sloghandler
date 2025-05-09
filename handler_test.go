@@ -3,7 +3,9 @@ package sloghandler
 import (
 	"bytes"
 	"context"
+	"io"
 	"log/slog"
+	"os"
 	"testing"
 	"time"
 
@@ -42,6 +44,23 @@ func TestNewLogHandler(t *testing.T) {
 
 	if h.mu == nil {
 		t.Error("handler mutex not initialized")
+	}
+}
+
+func TestNewLogger(t *testing.T) {
+	buf := &bytes.Buffer{}
+	w := io.MultiWriter(buf, os.Stderr)
+	opts := &HandlerOptions{
+		HandlerOptions: slog.HandlerOptions{Level: slog.LevelInfo},
+		Color:          false,
+	}
+	logger := slog.New(NewLogHandler(w, opts))
+	logger = logger.With("", "foo", "bar", "baz")
+
+	logger.Info("test message", "", "extra", "key", 42)
+	output := buf.String()
+	if !bytes.Contains(buf.Bytes(), []byte("[INFO] [foo] [bar:baz] [extra] [key:42] test message")) {
+		t.Errorf("Logger output doesn't contain message, got: %s", output)
 	}
 }
 
@@ -242,11 +261,13 @@ func TestHandle(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			buf := &bytes.Buffer{}
+			w := io.MultiWriter(buf, os.Stderr)
+
 			opts := &HandlerOptions{
 				HandlerOptions: slog.HandlerOptions{},
 				Color:          tt.color,
 			}
-			handler := NewLogHandler(buf, opts).(*logHandler)
+			handler := NewLogHandler(w, opts).(*logHandler)
 
 			// Add record attributes
 			recordWithAttrs := tt.record.Clone()
