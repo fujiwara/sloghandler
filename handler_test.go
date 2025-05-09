@@ -149,6 +149,26 @@ func TestHandle(t *testing.T) {
 				"error message",
 			},
 		},
+		{
+			name: "info level with empty key attr",
+			record: slog.Record{
+				Time:    testTime,
+				Level:   slog.LevelInfo,
+				Message: "message with empty key",
+			},
+			color: false,
+			attrs: []slog.Attr{
+				{Key: "", Value: slog.StringValue("no key")},
+				slog.String("key1", "value1"),
+			},
+			wantContains: []string{
+				"2023-01-02T15:04:05.000Z",
+				"[INFO]",
+				"[no key]",
+				"[key1:value1]",
+				"message with empty key",
+			},
+		},
 	}
 
 	for _, tt := range tests {
