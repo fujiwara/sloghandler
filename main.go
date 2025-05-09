@@ -18,10 +18,10 @@ var (
 )
 
 var (
-	warnColoredFprintfFunc  = color.New(WarnColor).FprintfFunc()
-	errorColoredFprintfFunc = color.New(ErrorColor).FprintfFunc()
-	defaultFprintfFunc      = func(w io.Writer, format string, args ...interface{}) {
-		fmt.Fprintf(w, format, args...)
+	warnColoredFprintFunc  = color.New(WarnColor).FprintFunc()
+	errorColoredFprintFunc = color.New(ErrorColor).FprintFunc()
+	defaultFprintFunc      = func(w io.Writer, args ...interface{}) {
+		fmt.Fprint(w, args...)
 	}
 )
 
@@ -49,7 +49,7 @@ func (h *logHandler) Enabled(ctx context.Context, level slog.Level) bool {
 	return level >= h.opts.Level.Level()
 }
 
-func (h *logHandler) FprintfFunc(level slog.Level) func(io.Writer, string, ...interface{}) {
+func (h *logHandler) FprintFunc(level slog.Level) func(io.Writer, ...interface{}) {
 	if h.opts.Color {
 		switch level {
 		case slog.LevelDebug:
@@ -57,34 +57,47 @@ func (h *logHandler) FprintfFunc(level slog.Level) func(io.Writer, string, ...in
 		case slog.LevelInfo:
 			// no color
 		case slog.LevelWarn:
-			return warnColoredFprintfFunc
+			return warnColoredFprintFunc
 		case slog.LevelError:
-			return errorColoredFprintfFunc
+			return errorColoredFprintFunc
 		}
 	}
-	return defaultFprintfFunc
+	return defaultFprintFunc
 }
 
 func (h *logHandler) Handle(ctx context.Context, record slog.Record) error {
 	buf := new(bytes.Buffer)
-	fprintf := h.FprintfFunc(record.Level)
-	fprintf(buf, "%s", record.Time.Format(TimeFormat))
-	fprintf(buf, " [%s]", record.Level.String())
+
+	// Build the log message without color formatting
+	fmt.Fprintf(buf, "%s", record.Time.Format(TimeFormat))
+	fmt.Fprintf(buf, " [%s]", record.Level.String())
+
 	if len(h.preformatted) > 0 {
 		buf.Write(h.preformatted)
 	}
+
 	record.Attrs(func(a slog.Attr) bool {
 		if a.Key == "" {
-			fprintf(buf, " [%v]", a.Value)
+			fmt.Fprintf(buf, " [%v]", a.Value)
 		} else {
-			fprintf(buf, " [%s:%v]", a.Key, a.Value)
+			fmt.Fprintf(buf, " [%s:%v]", a.Key, a.Value)
 		}
 		return true
 	})
-	fprintf(buf, " %s\n", record.Message)
+
+	fmt.Fprintf(buf, " %s\n", record.Message)
+
+	// Apply color only once at the end if needed
 	h.mu.Lock()
 	defer h.mu.Unlock()
-	_, err := h.w.Write(buf.Bytes())
+	var err error
+	if h.opts.Color {
+		fprint := h.FprintFunc(record.Level)
+		fprint(h.w, buf.String())
+	} else {
+		// Write the buffer directly without color formatting
+		_, err = h.w.Write(buf.Bytes())
+	}
 	return err
 }
 

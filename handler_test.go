@@ -97,7 +97,7 @@ func TestFprintfFunc(t *testing.T) {
 			Color:          tt.color,
 		}
 		handler := NewLogHandler(buf, opts).(*logHandler)
-		f := handler.FprintfFunc(tt.level)
+		f := handler.FprintFunc(tt.level)
 		if f == nil {
 			t.Errorf("FprintfFunc(%v, color=%v) returned nil", tt.level, tt.color)
 		}
@@ -115,11 +115,11 @@ func TestHandle(t *testing.T) {
 	testTime := time.Date(2023, 1, 2, 15, 4, 5, 0, time.UTC)
 
 	tests := []struct {
-		name         string
-		record       slog.Record
-		color        bool
-		attrs        []slog.Attr
-		wantContains []string
+		name            string
+		record          slog.Record
+		color           bool
+		attrs           []slog.Attr
+		wantContains    []string
 		wantNotContains []string
 	}{
 		{
@@ -350,12 +350,12 @@ func TestWithGroup(t *testing.T) {
 	}
 }
 
-func TestFprintfFuncOutput(t *testing.T) {
+func TestFprintFuncOutput(t *testing.T) {
 	tests := []struct {
-		name         string
-		level        slog.Level
-		color        bool
-		wantContains []string
+		name            string
+		level           slog.Level
+		color           bool
+		wantContains    []string
 		wantNotContains []string
 	}{
 		{
@@ -432,7 +432,7 @@ func TestFprintfFuncOutput(t *testing.T) {
 				Color:          tt.color,
 			}
 			handler := NewLogHandler(buf, opts).(*logHandler)
-			fprintfFunc := handler.FprintfFunc(tt.level)
+			fprintfFunc := handler.FprintFunc(tt.level)
 
 			// Call the function to write to buffer
 			fprintfFunc(buf, "test message")
