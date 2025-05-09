@@ -6,7 +6,14 @@ import (
 	"log/slog"
 	"testing"
 	"time"
+
+	"github.com/fatih/color"
 )
+
+func init() {
+	// Force colors for testing
+	color.NoColor = false
+}
 
 func TestNewLogHandler(t *testing.T) {
 	buf := &bytes.Buffer{}
@@ -113,6 +120,7 @@ func TestHandle(t *testing.T) {
 		color        bool
 		attrs        []slog.Attr
 		wantContains []string
+		wantNotContains []string
 	}{
 		{
 			name: "info level no attrs no color",
@@ -127,6 +135,9 @@ func TestHandle(t *testing.T) {
 				"2023-01-02T15:04:05.000Z",
 				"[INFO]",
 				"test message",
+			},
+			wantNotContains: []string{
+				"\033[", // ANSI escape sequence start
 			},
 		},
 		{
@@ -148,6 +159,9 @@ func TestHandle(t *testing.T) {
 				"[key2:42]",
 				"error message",
 			},
+			wantNotContains: []string{
+				"\033[", // ANSI escape sequence start
+			},
 		},
 		{
 			name: "info level with empty key attr",
@@ -167,6 +181,60 @@ func TestHandle(t *testing.T) {
 				"[no key]",
 				"[key1:value1]",
 				"message with empty key",
+			},
+			wantNotContains: []string{
+				"\033[", // ANSI escape sequence start
+			},
+		},
+		{
+			name: "warn level with color",
+			record: slog.Record{
+				Time:    testTime,
+				Level:   slog.LevelWarn,
+				Message: "warning message",
+			},
+			color: true,
+			attrs: nil,
+			wantContains: []string{
+				"2023-01-02T15:04:05.000Z",
+				"[WARN]",
+				"warning message",
+				"\033[", // ANSI escape sequence start
+			},
+		},
+		{
+			name: "error level with color",
+			record: slog.Record{
+				Time:    testTime,
+				Level:   slog.LevelError,
+				Message: "error message with color",
+			},
+			color: true,
+			attrs: nil,
+			wantContains: []string{
+				"2023-01-02T15:04:05.000Z",
+				"[ERROR]",
+				"error message with color",
+				"\033[", // ANSI escape sequence start
+			},
+		},
+		{
+			name: "info level with color should not have color",
+			record: slog.Record{
+				Time:    testTime,
+				Level:   slog.LevelInfo,
+				Message: "info message with color option but no color",
+			},
+			color: true,
+			attrs: nil,
+			wantContains: []string{
+				"2023-01-02T15:04:05.000Z",
+				"[INFO]",
+				"info message with color option but no color",
+			},
+			wantNotContains: []string{
+				"\033[31m", // Red color (should not be used for INFO)
+				"\033[33m", // Yellow color (should not be used for INFO)
 			},
 		},
 	}
@@ -193,9 +261,19 @@ func TestHandle(t *testing.T) {
 			}
 
 			output := buf.String()
+			// Check for strings that should be in the output
 			for _, want := range tt.wantContains {
 				if !bytes.Contains(buf.Bytes(), []byte(want)) {
 					t.Errorf("Handle() output = %q, should contain %q", output, want)
+				}
+			}
+
+			// Check for strings that should NOT be in the output
+			if tt.wantNotContains != nil {
+				for _, notWant := range tt.wantNotContains {
+					if bytes.Contains(buf.Bytes(), []byte(notWant)) {
+						t.Errorf("Handle() output = %q, should NOT contain %q", output, notWant)
+					}
 				}
 			}
 		})
@@ -272,6 +350,114 @@ func TestWithGroup(t *testing.T) {
 	}
 }
 
+func TestFprintfFuncOutput(t *testing.T) {
+	tests := []struct {
+		name         string
+		level        slog.Level
+		color        bool
+		wantContains []string
+		wantNotContains []string
+	}{
+		{
+			name:  "debug level with color",
+			level: slog.LevelDebug,
+			color: true,
+			wantContains: []string{
+				"test message",
+			},
+			wantNotContains: []string{
+				"\033[", // No color for debug
+			},
+		},
+		{
+			name:  "info level with color",
+			level: slog.LevelInfo,
+			color: true,
+			wantContains: []string{
+				"test message",
+			},
+			wantNotContains: []string{
+				"\033[", // No color for info
+			},
+		},
+		{
+			name:  "warn level with color",
+			level: slog.LevelWarn,
+			color: true,
+			wantContains: []string{
+				"test message",
+				"\033[", // Should have escape sequence
+				"m",     // Color code terminator
+			},
+		},
+		{
+			name:  "error level with color",
+			level: slog.LevelError,
+			color: true,
+			wantContains: []string{
+				"test message",
+				"\033[", // Should have escape sequence
+				"m",     // Color code terminator
+			},
+		},
+		{
+			name:  "warn level without color",
+			level: slog.LevelWarn,
+			color: false,
+			wantContains: []string{
+				"test message",
+			},
+			wantNotContains: []string{
+				"\033[", // No color when color is disabled
+			},
+		},
+		{
+			name:  "error level without color",
+			level: slog.LevelError,
+			color: false,
+			wantContains: []string{
+				"test message",
+			},
+			wantNotContains: []string{
+				"\033[", // No color when color is disabled
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			buf := &bytes.Buffer{}
+			opts := &HandlerOptions{
+				HandlerOptions: slog.HandlerOptions{},
+				Color:          tt.color,
+			}
+			handler := NewLogHandler(buf, opts).(*logHandler)
+			fprintfFunc := handler.FprintfFunc(tt.level)
+
+			// Call the function to write to buffer
+			fprintfFunc(buf, "test message")
+
+			output := buf.String()
+
+			// Check for strings that should be in the output
+			for _, want := range tt.wantContains {
+				if !bytes.Contains(buf.Bytes(), []byte(want)) {
+					t.Errorf("FprintfFunc() output = %q, should contain %q", output, want)
+				}
+			}
+
+			// Check for strings that should NOT be in the output
+			if tt.wantNotContains != nil {
+				for _, notWant := range tt.wantNotContains {
+					if bytes.Contains(buf.Bytes(), []byte(notWant)) {
+						t.Errorf("FprintfFunc() output = %q, should NOT contain %q", output, notWant)
+					}
+				}
+			}
+		})
+	}
+}
+
 func TestIntegration(t *testing.T) {
 	buf := &bytes.Buffer{}
 	opts := &HandlerOptions{
@@ -315,5 +501,68 @@ func TestIntegration(t *testing.T) {
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("[service:test]")) {
 		t.Errorf("Logger.With().Warn() output doesn't contain handler attribute, got: %s", output)
+	}
+}
+
+func TestIntegrationWithColor(t *testing.T) {
+	buf := &bytes.Buffer{}
+	opts := &HandlerOptions{
+		HandlerOptions: slog.HandlerOptions{Level: slog.LevelDebug},
+		Color:          true,
+	}
+	handler := NewLogHandler(buf, opts)
+	logger := slog.New(handler)
+
+	// Test different log levels with color
+	logger.Debug("debug message")
+	output := buf.String()
+	if !bytes.Contains(buf.Bytes(), []byte("debug message")) {
+		t.Errorf("Logger.Debug() output doesn't contain message, got: %s", output)
+	}
+	// Debug should not have color
+	if bytes.Contains(buf.Bytes(), []byte("\033[")) {
+		t.Errorf("Logger.Debug() output should not contain ANSI escape sequence, got: %s", output)
+	}
+
+	// Reset buffer
+	buf.Reset()
+
+	// Test info level - should not have color
+	logger.Info("info message")
+	output = buf.String()
+	if !bytes.Contains(buf.Bytes(), []byte("info message")) {
+		t.Errorf("Logger.Info() output doesn't contain message, got: %s", output)
+	}
+	// Info should not have color
+	if bytes.Contains(buf.Bytes(), []byte("\033[")) {
+		t.Errorf("Logger.Info() output should not contain ANSI escape sequence, got: %s", output)
+	}
+
+	// Reset buffer
+	buf.Reset()
+
+	// Test warn level - should have yellow color
+	logger.Warn("warning message")
+	output = buf.String()
+	if !bytes.Contains(buf.Bytes(), []byte("warning message")) {
+		t.Errorf("Logger.Warn() output doesn't contain message, got: %s", output)
+	}
+	// Warn should have color
+	if !bytes.Contains(buf.Bytes(), []byte("\033[")) {
+		t.Errorf("Logger.Warn() output should contain ANSI escape sequence for color, got: %s", output)
+	}
+
+	// Reset buffer
+	buf.Reset()
+
+	// Test error level - should have red color
+	logger.Error("error message")
+	output = buf.String()
+	if !bytes.Contains(buf.Bytes(), []byte("error message")) {
+		t.Errorf("Logger.Error() output doesn't contain message, got: %s", output)
+	}
+	// Error should have color
+	if !bytes.Contains(buf.Bytes(), []byte("\033[")) {
+		t.Errorf("Logger.Error() output should contain ANSI escape sequence for color, got: %s", output)
 	}
 }
