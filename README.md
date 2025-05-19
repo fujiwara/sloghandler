@@ -88,7 +88,17 @@ sloghandler.ErrorColor = color.FgHiRed
 
 # Metrics Handlers
 
-The following packages provide slog.Handler implementations for metrics integration. These are separate from the main sloghandler package.
+The following packages provide slog.Handler implementations for metrics integration.
+
+These handlers are useful when you want to:
+
+- Monitor the volume and level of log messages in your application as metrics.
+- Visualize trends or spikes in log output (e.g., sudden increase in ERROR logs) using monitoring systems like Prometheus or OpenTelemetry.
+- Set up alerts based on log activity, such as triggering an alert if ERROR logs exceed a threshold.
+- Analyze log level distribution over time without parsing raw log files.
+- Integrate log statistics into dashboards for observability and SRE/DevOps workflows.
+
+By using these handlers, you can export log activity as metrics, making it easy to observe, alert, and analyze your application's behavior in production environments.
 
 ## otelmetrics: OpenTelemetry Metrics Handler
 
