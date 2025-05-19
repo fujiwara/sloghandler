@@ -11,13 +11,13 @@ It provides colored output for log levels and customizable formatting.
 - Custom time format
 - Preservation of log attributes
 
-## Installation
+### Installation
 
 ```
 go get github.com/fujiwara/sloghandler
 ```
 
-## Usage
+### Usage
 
 Example usage with default settings:
 
@@ -84,12 +84,67 @@ sloghandler.WarnColor = color.FgMagenta
 sloghandler.ErrorColor = color.FgHiRed
 ```
 
-## Testing
+---
 
-The package includes comprehensive tests. Run them with:
+# Metrics Handlers
 
+The following packages provide slog.Handler implementations for metrics integration. These are separate from the main sloghandler package.
+
+## otelmetrics: OpenTelemetry Metrics Handler
+
+```go
+import (
+	"log/slog"
+	"go.opentelemetry.io/otel/metric"
+	"github.com/fujiwara/sloghandler/otelmetrics"
+)
+
+func main() {
+	// Create an OpenTelemetry meter and counter
+	meter := provider.Meter("example/logs")
+	counter, _ := meter.Int64Counter(
+		"log_messages",
+		metric.WithDescription("Number of log messages by level"),
+	)
+	// Create a base slog handler
+	baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
+	// Wrap with the OpenTelemetry handler
+	handler := otelmetrics.NewHandler(baseHandler, counter)
+	logger := slog.New(handler)
+
+	logger.Info("This is an info message")
+	logger.Error("This is an error message")
+}
 ```
-go test -v
+
+## prommetrics: Prometheus Metrics Handler
+
+```go
+import (
+	"log/slog"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/fujiwara/sloghandler/prommetrics"
+)
+
+func main() {
+	// Create a Prometheus counter
+	counter := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "log_messages_total",
+			Help: "Total number of log messages by level",
+		},
+		[]string{"level"},
+	)
+	prometheus.MustRegister(counter)
+	// Create a base slog handler
+	baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
+	// Wrap with the Prometheus handler
+	handler := prommetrics.NewHandler(baseHandler, counter)
+	logger := slog.New(handler)
+
+	logger.Info("This is an info message")
+	logger.Error("This is an error message")
+}
 ```
 
 ## LICENSE
