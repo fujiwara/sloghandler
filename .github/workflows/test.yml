@@ -10,6 +10,15 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
 
+    services:
+      otel-collector:
+        image: otel/opentelemetry-collector-contrib:latest
+        ports:
+          - 4317:4317 # OTLP gRPC
+          - 4318:4318 # OTLP HTTP
+        volumes:
+          - ./.github/otel-collector-config.yml:/etc/otel-collector-config.yml
+
     steps:
       - name: Set up Go
         uses: actions/setup-go@v5

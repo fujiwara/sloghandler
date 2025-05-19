@@ -63,14 +63,14 @@ func TestNewHandlerWithOptionsAPI(t *testing.T) {
 	t.Skip("Skipping test since we cannot easily mock OpenTelemetry Counter interface")
 
 	// In a real application, the code would look like:
-	// 
+	//
 	// // Create a meter and counter
 	// meter := provider.Meter("example/logs")
 	// counter, _ := meter.Int64Counter(
 	//   "log_messages",
 	//   metric.WithDescription("Number of log messages by level"),
 	// )
-	// 
+	//
 	// // Create options with minimum level set to INFO (DEBUG logs will not be counted)
 	// customOpts := &Options{
 	//   MinLevel: slog.LevelInfo,
