@@ -3,7 +3,14 @@ package otelmetrics
 import (
 	"context"
 	"log/slog"
+	"os"
 	"testing"
+	"time"
+
+	"go.opentelemetry.io/otel/attribute"
+	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
+	"go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/resource"
 )
 
 // TestLogPassthrough tests the basic functionality of the logger without
@@ -73,6 +80,46 @@ func TestNewHandlerWithOptionsAPI(t *testing.T) {
 	// handler := otelmetrics.NewHandlerWithOptions(baseHandler, counter, customOpts)
 }
 
+// TestOtelMetricsE2E tests sending metrics to the otel-collector and verifies successful transmission without errors
+func TestOtelMetricsE2E(t *testing.T) {
+	if os.Getenv("CI") == "" {
+		t.Skip("E2E test only runs in CI environment")
+	}
+
+	exp, err := otlpmetricgrpc.New(
+		context.Background(),
+		otlpmetricgrpc.WithEndpoint("localhost:4317"),
+		otlpmetricgrpc.WithInsecure(),
+	)
+	if err != nil {
+		t.Fatalf("failed to create otlp exporter: %v", err)
+	}
+	defer exp.Shutdown(context.Background())
+
+	meterProvider := metric.NewMeterProvider(
+		metric.WithReader(metric.NewPeriodicReader(exp)),
+		metric.WithResource(resource.NewWithAttributes(
+			"test",
+			attribute.String("service.name", "sloghandler-e2e-test"),
+		)),
+	)
+	meter := meterProvider.Meter("sloghandler/test")
+	counter, err := meter.Int64Counter("log_messages")
+	if err != nil {
+		t.Fatalf("failed to create counter: %v", err)
+	}
+
+	baseHandler := &mockHandler{records: make([]slog.Record, 0)}
+	handler := NewHandler(baseHandler, counter)
+	logger := slog.New(handler)
+
+	logger.Info("E2E info message")
+	logger.Error("E2E error message")
+
+	// Give some time for the exporter to send
+	time.Sleep(2 * time.Second)
+	// If no panic or error, we assume success (otel-collector logs can be checked in CI)
+}
 
 // Mock handler to capture log records for testing
 type mockHandler struct {

@@ -47,7 +47,6 @@ var _ slog.Handler = (*SlogHandler)(nil)
 //	meter := provider.Meter("example/logs")
 //	counter, _ := meter.Int64Counter(
 //	  "log_messages",
-//	  metric.WithDescription("Number of log messages by level"),
 //	)
 //	handler := otelmetrics.NewHandler(baseHandler, counter)
 //
