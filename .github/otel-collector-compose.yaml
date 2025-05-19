@@ -6,5 +6,5 @@ services:
       - 4317:4317 # OTLP gRPC
       - 4318:4318 # OTLP HTTP
     volumes:
-      - ./github/otel-collector-config.yaml:/etc/otel-collector-config.yaml:ro
-    command: ["--config=/etc/otel-collector-config.yaml"]
+      - ./:/opt/sloghandler
+    command: ["--config=/opt/sloghandler/otel-collector-config.yaml"]
