@@ -20,27 +20,6 @@ jobs:
           go-version: ${{ matrix.go }}
         id: go
 
-      - name: Set up Docker Compose
-        run: |
-          docker compose version || pip install docker-compose
-
-      - name: Start otel-collector
-        run: |
-          docker compose -f .github/otel-collector-compose.yaml up -d
-          sleep 5
-
       - name: Build & Test
         run: |
           go test -race ./...
-        env:
-          GO111MODULE: on
-          CI: on
-
-      - name: Show otel-collector logs
-        run: |
-          docker compose -f .github/otel-collector-compose.yaml logs otel-collector
-
-      - name: Stop otel-collector
-        if: always()
-        run: |
-          docker compose -f .github/otel-collector-compose.yaml down

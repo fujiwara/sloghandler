@@ -120,6 +120,9 @@ func main() {
 	baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 	// Wrap with the OpenTelemetry handler
 	handler := otelmetrics.NewHandler(baseHandler, counter)
+	// handler := otelmetrics.NewHandlerWithOptions(baseHandler, counter, &otelmetrics.HandlerOptions{
+	// 	Level: slog.LevelDebug,
+	// }
 	logger := slog.New(handler)
 
 	logger.Info("This is an info message")
