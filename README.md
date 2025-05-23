@@ -11,13 +11,13 @@ It provides colored output for log levels and customizable formatting.
 - Custom time format
 - Preservation of log attributes
 
-## Installation
+### Installation
 
 ```
 go get github.com/fujiwara/sloghandler
 ```
 
-## Usage
+### Usage
 
 Example usage with default settings:
 
@@ -84,12 +84,80 @@ sloghandler.WarnColor = color.FgMagenta
 sloghandler.ErrorColor = color.FgHiRed
 ```
 
-## Testing
+---
 
-The package includes comprehensive tests. Run them with:
+# Metrics Handlers
 
+The following packages provide slog.Handler implementations for metrics integration.
+
+These handlers are useful when you want to:
+
+- Monitor the volume and level of log messages in your application as metrics.
+- Visualize trends or spikes in log output (e.g., sudden increase in ERROR logs) using monitoring systems like Prometheus or OpenTelemetry.
+- Set up alerts based on log activity, such as triggering an alert if ERROR logs exceed a threshold.
+- Analyze log level distribution over time without parsing raw log files.
+- Integrate log statistics into dashboards for observability and SRE/DevOps workflows.
+
+By using these handlers, you can export log activity as metrics, making it easy to observe, alert, and analyze your application's behavior in production environments.
+
+## otelmetrics: OpenTelemetry Metrics Handler
+
+```go
+import (
+	"log/slog"
+	"go.opentelemetry.io/otel/metric"
+	"github.com/fujiwara/sloghandler/otelmetrics"
+)
+
+func main() {
+	// Create an OpenTelemetry meter and counter
+	meter := provider.Meter("example/logs")
+	counter, _ := meter.Int64Counter(
+		"log_messages",
+		metric.WithDescription("Number of log messages by level"),
+	)
+	// Create a base slog handler
+	baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
+	// Wrap with the OpenTelemetry handler
+	handler := otelmetrics.NewHandler(baseHandler, counter)
+	// handler := otelmetrics.NewHandlerWithOptions(baseHandler, counter, &otelmetrics.HandlerOptions{
+	// 	Level: slog.LevelDebug,
+	// }
+	logger := slog.New(handler)
+
+	logger.Info("This is an info message")
+	logger.Error("This is an error message")
+}
 ```
-go test -v
+
+## prommetrics: Prometheus Metrics Handler
+
+```go
+import (
+	"log/slog"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/fujiwara/sloghandler/prommetrics"
+)
+
+func main() {
+	// Create a Prometheus counter
+	counter := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "log_messages_total",
+			Help: "Total number of log messages by level",
+		},
+		[]string{"level"},
+	)
+	prometheus.MustRegister(counter)
+	// Create a base slog handler
+	baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
+	// Wrap with the Prometheus handler
+	handler := prommetrics.NewHandler(baseHandler, counter)
+	logger := slog.New(handler)
+
+	logger.Info("This is an info message")
+	logger.Error("This is an error message")
+}
 ```
 
 ## LICENSE
