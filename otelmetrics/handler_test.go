@@ -1,4 +1,4 @@
-package otelmetrics
+package otelmetrics_test
 
 import (
 	"context"
@@ -7,139 +7,136 @@ import (
 	"testing"
 	"time"
 
-	"go.opentelemetry.io/otel/attribute"
-	"go.opentelemetry.io/otel/exporters/otlp/otlpmetric/otlpmetricgrpc"
-	"go.opentelemetry.io/otel/sdk/metric"
-	"go.opentelemetry.io/otel/sdk/resource"
+	"github.com/fujiwara/sloghandler/otelmetrics"
+	"github.com/google/go-cmp/cmp"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/exporters/stdout/stdoutmetric"
+	"go.opentelemetry.io/otel/metric"
+	sdkmetric "go.opentelemetry.io/otel/sdk/metric"
+	"go.opentelemetry.io/otel/sdk/metric/metricdata"
 )
 
-// TestLogPassthrough tests the basic functionality of the logger without
-// trying to mock the OpenTelemetry metrics interfaces
-func TestLogPassthrough(t *testing.T) {
-	// Create a mock handler to capture log records
-	mock := &mockHandler{
-		records: make([]slog.Record, 0),
-	}
-
-	// Create a logger that uses the mock handler
-	logger := slog.New(mock)
-
-	// Log messages at different levels
-	logger.Debug("Debug message")
-	logger.Info("Info message")
-	logger.Warn("Warning message")
-	logger.Error("Error message")
-
-	// Log additional messages
-	logger.Info("Another info message")
-	logger.Error("Another error message")
-
-	// Verify the correct number of messages were logged
-	expectedCounts := map[slog.Level]int{
-		slog.LevelDebug: 1,
-		slog.LevelInfo:  2,
-		slog.LevelWarn:  1,
-		slog.LevelError: 2,
-	}
-
-	// Count records by level
-	counts := make(map[slog.Level]int)
-	for _, record := range mock.records {
-		counts[record.Level]++
-	}
-
-	// Verify counts match expectations
-	for level, expected := range expectedCounts {
-		if counts[level] != expected {
-			t.Errorf("Expected %d logs at level %s, got %d", expected, level, counts[level])
-		}
-	}
-}
-
-// TestNewHandlerWithOptions tests if the handler constructor works correctly with options
-func TestNewHandlerWithOptionsAPI(t *testing.T) {
-	// Skip this test - we can't easily mock the OpenTelemetry Counter interface
-	// The functionality is covered by the Prometheus handler tests, which have the same logic
-	t.Skip("Skipping test since we cannot easily mock OpenTelemetry Counter interface")
-
-	// In a real application, the code would look like:
-	//
-	// // Create a meter and counter
-	// meter := provider.Meter("example/logs")
-	// counter, _ := meter.Int64Counter(
-	//   "log_messages",
-	//   metric.WithDescription("Number of log messages by level"),
-	// )
-	//
-	// // Create options with minimum level set to INFO (DEBUG logs will not be counted)
-	// customOpts := &Options{
-	//   MinLevel: slog.LevelInfo,
-	// }
-	//
-	// // Create handler with options
-	// handler := otelmetrics.NewHandlerWithOptions(baseHandler, counter, customOpts)
-}
-
-// TestOtelMetricsE2E tests sending metrics to the otel-collector and verifies successful transmission without errors
-func TestOtelMetricsE2E(t *testing.T) {
-	if os.Getenv("CI") == "" {
-		t.Skip("E2E test only runs in CI environment")
-	}
-
-	exp, err := otlpmetricgrpc.New(
-		context.Background(),
-		otlpmetricgrpc.WithEndpoint("localhost:4317"),
-		otlpmetricgrpc.WithInsecure(),
+// setup provider for testing
+func setupProvider(t *testing.T) (*sdkmetric.MeterProvider, *sdkmetric.ManualReader) {
+	exporter, err := stdoutmetric.New(
+		stdoutmetric.WithPrettyPrint(),
 	)
 	if err != nil {
-		t.Fatalf("failed to create otlp exporter: %v", err)
+		t.Fatalf("Failed to create exporter: %v", err)
 	}
-	defer exp.Shutdown(context.Background())
 
-	meterProvider := metric.NewMeterProvider(
-		metric.WithReader(metric.NewPeriodicReader(exp)),
-		metric.WithResource(resource.NewWithAttributes(
-			"test",
-			attribute.String("service.name", "sloghandler-e2e-test"),
+	reader := sdkmetric.NewManualReader()
+	provider := sdkmetric.NewMeterProvider(
+		sdkmetric.WithReader(reader),
+		sdkmetric.WithReader(sdkmetric.NewPeriodicReader(exporter,
+			sdkmetric.WithInterval(100*time.Millisecond),
 		)),
 	)
-	meter := meterProvider.Meter("sloghandler/test")
-	counter, err := meter.Int64Counter("log_messages")
-	if err != nil {
-		t.Fatalf("failed to create counter: %v", err)
+
+	otel.SetMeterProvider(provider)
+	return provider, reader
+}
+
+func collectMetrics(t *testing.T, reader *sdkmetric.ManualReader) map[string]int64 {
+	ctx := context.Background()
+	var rm metricdata.ResourceMetrics
+	if err := reader.Collect(ctx, &rm); err != nil {
+		t.Logf("Failed to collect final metrics: %v", err)
 	}
 
-	baseHandler := &mockHandler{records: make([]slog.Record, 0)}
-	handler := NewHandler(baseHandler, counter)
+	if len(rm.ScopeMetrics) == 0 {
+		t.Fatal("No scope metrics found")
+	}
+	scopeMetrics := rm.ScopeMetrics[0]
+	if len(scopeMetrics.Metrics) == 0 {
+		t.Fatal("No metrics found")
+	}
+
+	metricData := scopeMetrics.Metrics[0]
+	if metricData.Name != "log_messages" {
+		t.Errorf("Expected metric name 'log_messages', got %s", metricData.Name)
+	}
+
+	countByLevel := map[string]int64{}
+	if sum, ok := metricData.Data.(metricdata.Sum[int64]); ok {
+		if len(sum.DataPoints) == 0 {
+			t.Fatal("No data points found")
+		}
+		for _, dp := range sum.DataPoints {
+			// Check if the level attribute is present
+			for _, attr := range dp.Attributes.ToSlice() {
+				if attr.Key == "level" {
+					countByLevel[attr.Value.AsString()] = dp.Value
+					break
+				}
+			}
+		}
+	}
+	return countByLevel
+}
+
+func TestMetrics(t *testing.T) {
+	provider, reader := setupProvider(t)
+
+	meter := provider.Meter("example/logs")
+	counter, _ := meter.Int64Counter(
+		"log_messages",
+		metric.WithDescription("Number of log messages by level"),
+	)
+	// Create a base slog handler
+	baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
+	// Wrap with the OpenTelemetry handler
+	handler := otelmetrics.NewHandler(baseHandler, counter)
 	logger := slog.New(handler)
 
-	logger.Info("E2E info message")
-	logger.Error("E2E error message")
+	logger.Debug("This is a debug message") // Should not be recorded
+	logger.Info("This is an info message")
+	logger.Info("This is another info message")
+	logger.Error("This is an error message")
+	logger.Error("This is another error message")
+	expectedCounts := map[string]int64{
+		"INFO":  2,
+		"WARN":  0,
+		"ERROR": 2,
+	}
 
-	// Give some time for the exporter to send
-	time.Sleep(2 * time.Second)
-	// If no panic or error, we assume success (otel-collector logs can be checked in CI)
+	countByLevel := collectMetrics(t, reader)
+
+	if diff := cmp.Diff(expectedCounts, countByLevel); diff != "" {
+		t.Errorf("Metric counts mismatch (-want +got):\n%s", diff)
+	}
 }
 
-// Mock handler to capture log records for testing
-type mockHandler struct {
-	records []slog.Record
-}
+func TestMinLevel(t *testing.T) {
+	provider, reader := setupProvider(t)
 
-func (m *mockHandler) Enabled(ctx context.Context, level slog.Level) bool {
-	return true
-}
+	meter := provider.Meter("example/logs")
+	counter, _ := meter.Int64Counter(
+		"log_messages",
+		metric.WithDescription("Number of log messages by level"),
+	)
+	// Create a base slog handler
+	level := slog.LevelWarn
+	baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: level})
+	// Wrap with the OpenTelemetry handler
+	handler := otelmetrics.NewHandlerWithOptions(baseHandler, counter, &otelmetrics.Options{
+		MinLevel: level,
+	})
+	logger := slog.New(handler)
 
-func (m *mockHandler) Handle(ctx context.Context, record slog.Record) error {
-	// Make a copy of the record to store (since record may be reused)
-	m.records = append(m.records, record)
-	return nil
-}
+	logger.Debug("This is a debug message")     // Should not be recorded
+	logger.Info("This is an info message")      // Should not be recorded
+	logger.Info("This is another info message") // Should not be recorded
+	logger.Warn("This is a warning message")
+	logger.Error("This is an error message")
+	logger.Error("This is another error message")
+	expectedCounts := map[string]int64{
+		"WARN":  1,
+		"ERROR": 2,
+	}
+	countByLevel := collectMetrics(t, reader)
 
-func (m *mockHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	return m
-}
-
-func (m *mockHandler) WithGroup(name string) slog.Handler {
-	return m
+	if diff := cmp.Diff(expectedCounts, countByLevel); diff != "" {
+		t.Errorf("Metric counts mismatch (-want +got):\n%s", diff)
+	}
 }

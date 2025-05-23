@@ -24,7 +24,7 @@ type Options struct {
 // DefaultOptions returns the default configuration options.
 func DefaultOptions() *Options {
 	return &Options{
-		MinLevel: slog.LevelDebug, // Record Debug and above by default
+		MinLevel: slog.LevelInfo, // Record Info and above by default
 	}
 }
 
