@@ -23,15 +23,15 @@ type Options struct {
 // DefaultOptions returns the default configuration options.
 func DefaultOptions() *Options {
 	return &Options{
-		MinLevel: slog.LevelInfo, // Record Info and above by default
+		MinLevel:        slog.LevelInfo, // Record Info and above by default
 	}
 }
 
 // SlogHandler is a slog.Handler that counts log messages by level in Prometheus metrics.
 type SlogHandler struct {
 	slog.Handler
-	counter  *prometheus.CounterVec
-	minLevel slog.Level
+	counter *prometheus.CounterVec
+	options *Options
 }
 
 // NewHandler creates a new SlogHandler that wraps the given base handler.
@@ -66,21 +66,20 @@ func NewHandlerWithOptions(base slog.Handler, counter *prometheus.CounterVec, op
 	}
 
 	return &SlogHandler{
-		Handler:  base,
-		counter:  counter,
-		minLevel: opts.MinLevel,
+		Handler: base,
+		counter: counter,
+		options: opts,
 	}
 }
 
 // Handle processes the log record, increments the appropriate counter,
 // and passes the record to the underlying handler.
 func (h *SlogHandler) Handle(ctx context.Context, r slog.Record) error {
-	// Check if we should record this level based on minLevel
-	if r.Level >= h.minLevel {
-		// Increment counter for this level
-		h.counter.WithLabelValues(r.Level.String()).Inc()
+	if r.Level < h.options.MinLevel {
+		return h.Handler.Handle(ctx, r)
 	}
 
-	// Always pass the record to the underlying handler
+	// Increment counter for this level
+	h.counter.WithLabelValues(r.Level.String()).Inc()
 	return h.Handler.Handle(ctx, r)
 }

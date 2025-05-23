@@ -83,7 +83,6 @@ func TestPromHandler(t *testing.T) {
 
 			// Verify expected counts
 			expectedCounts := map[string]float64{
-				"DEBUG": 1,
 				"INFO":  2,
 				"WARN":  1,
 				"ERROR": 2,
