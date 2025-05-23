@@ -62,10 +62,20 @@ func NewHandler(base slog.Handler, counter *prometheus.CounterVec) slog.Handler 
 
 // NewHandlerWithOptions creates a new SlogHandler with the provided options.
 func NewHandlerWithOptions(base slog.Handler, counter *prometheus.CounterVec, opts *Options) slog.Handler {
-	// Use InitLevels if provided, otherwise auto-generate from MinLevel
+	// Initialize counters for each level with appropriate label values
 	for _, l := range predefinedLevels {
 		if l >= opts.MinLevel {
-			counter.WithLabelValues(l.String()).Add(0)
+			if len(opts.LabelAttributes) == 0 {
+				counter.WithLabelValues(l.String()).Add(0)
+			} else {
+				// When using label attributes, initialize with empty values for other labels
+				labels := make([]string, len(opts.LabelAttributes)+1)
+				labels[0] = l.String()
+				for i := 1; i < len(labels); i++ {
+					labels[i] = ""
+				}
+				counter.WithLabelValues(labels...).Add(0)
+			}
 		}
 	}
 
@@ -88,19 +98,17 @@ func (h *SlogHandler) Handle(ctx context.Context, r slog.Record) error {
 		// Use the specified label attributes
 		labels := make([]string, l+1)
 		labels[0] = r.Level.String()
+		// Initialize all attribute labels with empty strings
+		for i := 1; i < len(labels); i++ {
+			labels[i] = ""
+		}
 		for i, attr := range h.options.LabelAttributes {
 			r.Attrs(func(a slog.Attr) bool {
 				if a.Key == attr {
 					labels[i+1] = a.Value.String()
 				}
-				return i < l
+				return true
 			})
-		}
-		if s := len(labels); s < l+1 {
-			// If not all labels were found, fill with empty strings
-			for i := s; i < l+1; i++ {
-				labels[i] = ""
-			}
 		}
 		h.counter.WithLabelValues(labels...).Inc()
 	}
