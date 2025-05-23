@@ -120,9 +120,6 @@ func main() {
 	baseHandler := slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{Level: slog.LevelDebug})
 	// Wrap with the OpenTelemetry handler
 	handler := otelmetrics.NewHandler(baseHandler, counter)
-	// handler := otelmetrics.NewHandlerWithOptions(baseHandler, counter, &otelmetrics.HandlerOptions{
-	// 	Level: slog.LevelDebug,
-	// }
 	logger := slog.New(handler)
 
 	logger.Info("This is an info message")
@@ -159,6 +156,49 @@ func main() {
 	logger.Error("This is an error message")
 }
 ```
+
+### Custom Label Attributes (Optional)
+
+Both `otelmetrics` and `prommetrics` support custom label attributes, allowing you to add specific log attributes as metric labels for more detailed monitoring:
+
+#### otelmetrics with Custom Labels
+
+```go
+// Create handler with custom label attributes
+opts := &otelmetrics.Options{
+    MinLevel:        slog.LevelInfo,
+    LabelAttributes: []string{"service", "component"},
+}
+handler := otelmetrics.NewHandlerWithOptions(baseHandler, counter, opts)
+logger := slog.New(handler)
+
+// These attributes will become metric labels
+logger.Info("Request processed", 
+    "service", "api-gateway", 
+    "component", "router",
+    "user_id", "12345")  // user_id will be ignored (not in LabelAttributes)
+```
+
+#### prommetrics with Custom Labels
+
+```go
+// Create a Prometheus counter with custom labels
+counter := prometheus.NewCounterVec(
+    prometheus.CounterOpts{
+        Name: "log_messages_total",
+        Help: "Total number of log messages by level",
+    },
+    []string{"level", "service", "component"}, // Include custom labels
+)
+
+opts := &prommetrics.Options{
+    MinLevel:        slog.LevelInfo,
+    LabelAttributes: []string{"service", "component"},
+}
+handler := prommetrics.NewHandlerWithOptions(baseHandler, counter, opts)
+```
+
+This creates metrics with labels like `level=INFO,service=api-gateway,component=router`, enabling fine-grained monitoring and alerting based on specific service components.
 
 ## LICENSE
 
