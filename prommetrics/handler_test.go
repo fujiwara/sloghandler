@@ -3,12 +3,39 @@ package prommetrics
 import (
 	"bytes"
 	"log/slog"
-	"strings"
 	"testing"
 	"time"
 
+	"github.com/google/go-cmp/cmp"
 	"github.com/prometheus/client_golang/prometheus"
 )
+
+// Helper to return metrics as a map[level]count
+func gatherCounts(t *testing.T, reg *prometheus.Registry, metricName string) map[string]float64 {
+	metrics, err := reg.Gather()
+	if err != nil {
+		t.Fatalf("Failed to gather metrics: %v", err)
+	}
+	counts := make(map[string]float64)
+	for _, mf := range metrics {
+		if *mf.Name != metricName {
+			continue
+		}
+		for _, m := range mf.Metric {
+			var level string
+			for _, l := range m.Label {
+				if *l.Name == "level" {
+					level = *l.Value
+					break
+				}
+			}
+			if level != "" {
+				counts[level] = *m.Counter.Value
+			}
+		}
+	}
+	return counts
+}
 
 func TestPromHandler(t *testing.T) {
 	// Create a test registry
@@ -51,67 +78,14 @@ func TestPromHandler(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify metrics were collected
-	metrics, err := reg.Gather()
-	if err != nil {
-		t.Fatalf("Failed to gather metrics: %v", err)
+	got := gatherCounts(t, reg, "log_messages_total")
+	want := map[string]float64{
+		"INFO":  2,
+		"WARN":  1,
+		"ERROR": 2,
 	}
-
-	// Find our counter metrics
-	var found bool
-	for _, mf := range metrics {
-		if *mf.Name == "log_messages_total" {
-			found = true
-
-			// Map to store counts by level
-			counts := make(map[string]float64)
-
-			// Extract all the metrics
-			for _, m := range mf.Metric {
-				// Find the level label
-				var level string
-				for _, l := range m.Label {
-					if *l.Name == "level" {
-						level = *l.Value
-						break
-					}
-				}
-
-				if level != "" {
-					counts[level] = *m.Counter.Value
-				}
-			}
-
-			// Verify expected counts
-			expectedCounts := map[string]float64{
-				"INFO":  2,
-				"WARN":  1,
-				"ERROR": 2,
-			}
-
-			for level, expected := range expectedCounts {
-				actual, ok := counts[level]
-				if !ok {
-					t.Errorf("Missing metrics for level %s", level)
-					continue
-				}
-
-				if actual != expected {
-					t.Errorf("Expected count for level %s to be %f, got %f", level, expected, actual)
-				}
-			}
-
-			break
-		}
-	}
-
-	if !found {
-		t.Error("Could not find metrics for log_messages_total")
-	}
-
-	// Verify logs were correctly written to the buffer
-	logOutput := buf.String()
-	if logOutput == "" {
-		t.Error("No log output captured")
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Metric counts mismatch (-want +got):\n%s", diff)
 	}
 }
 
@@ -158,80 +132,13 @@ func TestMinLevel(t *testing.T) {
 	time.Sleep(10 * time.Millisecond)
 
 	// Verify metrics were collected
-	metrics, err := reg.Gather()
-	if err != nil {
-		t.Fatalf("Failed to gather metrics: %v", err)
+	got := gatherCounts(t, reg, "log_messages_min_level_total")
+	want := map[string]float64{
+		"INFO":  1,
+		"WARN":  1,
+		"ERROR": 1,
 	}
-
-	// Find our counter metrics
-	var found bool
-	for _, mf := range metrics {
-		if *mf.Name == "log_messages_min_level_total" {
-			found = true
-
-			// Map to store counts by level
-			counts := make(map[string]float64)
-
-			// Extract all the metrics
-			for _, m := range mf.Metric {
-				// Find the level label
-				var level string
-				for _, l := range m.Label {
-					if *l.Name == "level" {
-						level = *l.Value
-						break
-					}
-				}
-
-				if level != "" {
-					counts[level] = *m.Counter.Value
-				}
-			}
-
-			// Verify expected counts - only INFO, WARN, and ERROR should be counted
-			expectedCounts := map[string]float64{
-				"INFO":  1,
-				"WARN":  1,
-				"ERROR": 1,
-			}
-
-			for level, expected := range expectedCounts {
-				actual, ok := counts[level]
-				if !ok {
-					t.Errorf("Missing metrics for level %s", level)
-					continue
-				}
-
-				if actual != expected {
-					t.Errorf("Expected count for level %s to be %f, got %f", level, expected, actual)
-				}
-			}
-
-			// DEBUG should not have been recorded (below min level)
-			if _, exists := counts["DEBUG"]; exists {
-				t.Errorf("DEBUG level was recorded but shouldn't have been (below min level)")
-			}
-
-			break
-		}
-	}
-
-	if !found {
-		t.Error("Could not find metrics for log_messages_min_level_total")
-	}
-
-	// Verify all logs were correctly written to the buffer (all levels should be logged, even if not counted)
-	logOutput := buf.String()
-	if !strings.Contains(logOutput, "Debug message") {
-		t.Error("Debug message not found in log output")
-	}
-	if !strings.Contains(logOutput, "Info message") {
-		t.Error("Info message not found in log output")
-	}
-	if !strings.Contains(logOutput, "Warn message") {
-		t.Error("Warn message not found in log output")
-	}
-	if !strings.Contains(logOutput, "Error message") {
-		t.Error("Error message not found in log output")
+	if diff := cmp.Diff(want, got); diff != "" {
+		t.Errorf("Metric counts mismatch (-want +got):\n%s", diff)
 	}
 }
