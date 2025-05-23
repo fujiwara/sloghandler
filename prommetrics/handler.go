@@ -18,12 +18,16 @@ type Options struct {
 	// Logs with levels below this will not be counted in metrics.
 	// If not set (zero value), all log levels will be recorded.
 	MinLevel slog.Level
+
+	// LabelAttributes specifies the attributes to use as labels in the Prometheus counter.
+	LabelAttributes []string
 }
 
 // DefaultOptions returns the default configuration options.
 func DefaultOptions() *Options {
 	return &Options{
 		MinLevel:        slog.LevelInfo, // Record Info and above by default
+		LabelAttributes: []string{},
 	}
 }
 
@@ -78,8 +82,28 @@ func (h *SlogHandler) Handle(ctx context.Context, r slog.Record) error {
 	if r.Level < h.options.MinLevel {
 		return h.Handler.Handle(ctx, r)
 	}
+	if l := len(h.options.LabelAttributes); l == 0 {
+		h.counter.WithLabelValues(r.Level.String()).Inc()
+	} else {
+		// Use the specified label attributes
+		labels := make([]string, l+1)
+		labels[0] = r.Level.String()
+		for i, attr := range h.options.LabelAttributes {
+			r.Attrs(func(a slog.Attr) bool {
+				if a.Key == attr {
+					labels[i+1] = a.Value.String()
+				}
+				return i < l
+			})
+		}
+		if s := len(labels); s < l+1 {
+			// If not all labels were found, fill with empty strings
+			for i := s; i < l+1; i++ {
+				labels[i] = ""
+			}
+		}
+		h.counter.WithLabelValues(labels...).Inc()
+	}
 
-	// Increment counter for this level
-	h.counter.WithLabelValues(r.Level.String()).Inc()
 	return h.Handler.Handle(ctx, r)
 }
