@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.0.4](https://github.com/fujiwara/sloghandler/compare/v0.0.3...v0.0.4) - 2025-05-26
+- Add slog handlers for OpenTelemetry and Prometheus metrics by @fujiwara in https://github.com/fujiwara/sloghandler/pull/7
+- Add LabelAttributes support to metrics handlers by @fujiwara in https://github.com/fujiwara/sloghandler/pull/9
+
 ## [v0.0.3](https://github.com/fujiwara/sloghandler/compare/v0.0.2...v0.0.3) - 2025-05-09
 - fix: handle empty key in WithAttrs and improve test cases by @fujiwara in https://github.com/fujiwara/sloghandler/pull/5
 
