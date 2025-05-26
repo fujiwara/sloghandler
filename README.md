@@ -1,15 +1,16 @@
 # sloghandler
 
-sloghandler is a simple text handler for the [log/slog](https://pkg.go.dev/log/slog) package.
-It provides colored output for log levels and customizable formatting.
+sloghandler is a collection of handlers for the [log/slog](https://pkg.go.dev/log/slog) package.
+It provides colored text output with customizable formatting and metrics integration for monitoring log activity.
 
 ## Features
 
 - Simple, readable text output format
 - Colorized output for warning and error levels
-- Support for log level filtering
-- Custom time format
 - Preservation of log attributes
+- Metrics integration: Export log volume and level metrics to monitoring systems
+  - `prommetrics`: Prometheus metrics handler for tracking log statistics
+  - `otelmetrics`: OpenTelemetry metrics handler for observability integration
 
 ### Installation
 
