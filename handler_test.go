@@ -385,9 +385,8 @@ func TestFprintFuncOutput(t *testing.T) {
 			color: true,
 			wantContains: []string{
 				"test message",
-			},
-			wantNotContains: []string{
-				"\033[", // No color for debug
+				"\033[", // Should have escape sequence
+				"m",     // Color code terminator
 			},
 		},
 		{
@@ -540,9 +539,9 @@ func TestIntegrationWithColor(t *testing.T) {
 	if !bytes.Contains(buf.Bytes(), []byte("debug message")) {
 		t.Errorf("Logger.Debug() output doesn't contain message, got: %s", output)
 	}
-	// Debug should not have color
-	if bytes.Contains(buf.Bytes(), []byte("\033[")) {
-		t.Errorf("Logger.Debug() output should not contain ANSI escape sequence, got: %s", output)
+	// Debug should have color
+	if !bytes.Contains(buf.Bytes(), []byte("\033[")) {
+		t.Errorf("Logger.Debug() output should contain ANSI escape sequence, got: %s", output)
 	}
 
 	// Reset buffer

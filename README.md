@@ -6,7 +6,7 @@ It provides colored text output with customizable formatting and metrics integra
 ## Features
 
 - Simple, readable text output format
-- Colorized output for warning and error levels
+- Colorized output for all log levels (customizable)
 - Preservation of log attributes
 - Metrics integration: Export log volume and level metrics to monitoring systems
   - `prommetrics`: Prometheus metrics handler for tracking log statistics
@@ -47,8 +47,8 @@ func main() {
 	slog.SetDefault(logger)
 
 	// Basic usage
-	slog.Debug("This is a debug message")
-	slog.Info("This is an info message")
+	slog.Debug("This is a debug message")  // Gray output
+	slog.Info("This is an info message")   // No color by default
 	slog.Warn("This is a warning message") // Yellow output
 	slog.Error("This is an error message") // Red output
 
@@ -74,16 +74,39 @@ Output format:
 
 ## Customization
 
+### Color Configuration
+
+By default, log messages are colored as follows when `Color: true` is set:
+- **DEBUG**: Gray (dark gray)
+- **INFO**: No color (can be customized)
+- **WARN**: Yellow
+- **ERROR**: Red
+
 You can customize the time format and colors:
 
 ```go
+import "github.com/fatih/color"
+
 // Customize time format
 sloghandler.TimeFormat = "2006/01/02 15:04:05"
 
 // Customize colors
+sloghandler.DebugColor = color.FgCyan
+sloghandler.InfoColor = color.FgBlue  // Set color for INFO level
 sloghandler.WarnColor = color.FgMagenta
 sloghandler.ErrorColor = color.FgHiRed
+
+// To disable INFO color (back to default)
+sloghandler.InfoColor = 0
 ```
+
+### Global Variables
+
+- `TimeFormat string`: Customize the timestamp format (default: RFC3339 with milliseconds)
+- `DebugColor color.Attribute`: Color for debug messages (default: gray)
+- `InfoColor color.Attribute`: Color for info messages (default: 0 = no color)
+- `WarnColor color.Attribute`: Color for warning messages (default: yellow)
+- `ErrorColor color.Attribute`: Color for error messages (default: red)
 
 ---
 

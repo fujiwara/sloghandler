@@ -13,11 +13,14 @@ import (
 
 var (
 	TimeFormat = "2006-01-02T15:04:05.000Z07:00"
+	DebugColor = color.FgHiBlack
+	InfoColor  color.Attribute // 0 by default (no color)
 	WarnColor  = color.FgYellow
 	ErrorColor = color.FgRed
 )
 
 var (
+	debugColoredFprintFunc = color.New(DebugColor).FprintFunc()
 	warnColoredFprintFunc  = color.New(WarnColor).FprintFunc()
 	errorColoredFprintFunc = color.New(ErrorColor).FprintFunc()
 	defaultFprintFunc      = func(w io.Writer, args ...interface{}) {
@@ -53,9 +56,11 @@ func (h *logHandler) FprintFunc(level slog.Level) func(io.Writer, ...interface{}
 	if h.opts.Color {
 		switch level {
 		case slog.LevelDebug:
-			// no color
+			return debugColoredFprintFunc
 		case slog.LevelInfo:
-			// no color
+			if InfoColor != 0 {
+				return color.New(InfoColor).FprintFunc()
+			}
 		case slog.LevelWarn:
 			return warnColoredFprintFunc
 		case slog.LevelError:
