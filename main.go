@@ -12,10 +12,24 @@ import (
 )
 
 var (
+	// TimeFormat defines the timestamp format used in log output.
+	// Default is RFC3339 with milliseconds.
 	TimeFormat = "2006-01-02T15:04:05.000Z07:00"
+	
+	// DebugColor defines the color attribute for DEBUG level messages.
+	// Default is dark gray (color.FgHiBlack).
 	DebugColor = color.FgHiBlack
-	InfoColor  color.Attribute // 0 by default (no color)
-	WarnColor  = color.FgYellow
+	
+	// InfoColor defines the color attribute for INFO level messages.
+	// Default is 0 (no color). Set to a color.Attribute value to enable coloring.
+	InfoColor color.Attribute
+	
+	// WarnColor defines the color attribute for WARN level messages.
+	// Default is yellow (color.FgYellow).
+	WarnColor = color.FgYellow
+	
+	// ErrorColor defines the color attribute for ERROR level messages.
+	// Default is red (color.FgRed).
 	ErrorColor = color.FgRed
 )
 
@@ -28,8 +42,11 @@ var (
 	}
 )
 
+// HandlerOptions extends slog.HandlerOptions with additional formatting options.
 type HandlerOptions struct {
 	slog.HandlerOptions
+	// Color enables colored output based on log level when set to true.
+	// Colors can be customized using the global color variables.
 	Color bool
 }
 
@@ -40,6 +57,9 @@ type logHandler struct {
 	w            io.Writer
 }
 
+// NewLogHandler creates a new log handler that writes formatted log messages to w.
+// The handler supports colored output when opts.Color is true, with customizable
+// colors for each log level via global color variables.
 func NewLogHandler(w io.Writer, opts *HandlerOptions) slog.Handler {
 	return &logHandler{
 		opts: opts,
