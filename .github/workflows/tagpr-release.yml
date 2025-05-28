@@ -21,3 +21,10 @@ jobs:
         id: tagpr
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: tag for sub packages
+        if: ${{ steps.tagpr.outputs.tag != '' }}
+        run: |
+          echo "Tagging sub packages with tag: ${{ steps.tagpr.outputs.tag }}"
+          git tag prommetrics/${{ steps.tagpr.outputs.tag }}
+          git tag otelmetrics/${{ steps.tagpr.outputs.tag }}
+          git push --tags origin
