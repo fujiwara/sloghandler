@@ -1,5 +1,7 @@
 # Changelog
 
+## [v0.0.6](https://github.com/fujiwara/sloghandler/compare/v0.0.5...v0.0.6) - 2025-05-28
+
 ## [v0.0.5](https://github.com/fujiwara/sloghandler/compare/v0.0.4...v0.0.5) - 2025-05-27
 - All levels coloring. by @fujiwara in https://github.com/fujiwara/sloghandler/pull/11
 
