@@ -1,5 +1,8 @@
 # Changelog
 
+## [v0.0.6](https://github.com/fujiwara/sloghandler/compare/v0.0.5...v0.0.6) - 2025-09-01
+- Bump actions/checkout from 4 to 5 by @dependabot[bot] in https://github.com/fujiwara/sloghandler/pull/13
+
 ## [v0.0.5](https://github.com/fujiwara/sloghandler/compare/v0.0.4...v0.0.5) - 2025-05-27
 - All levels coloring. by @fujiwara in https://github.com/fujiwara/sloghandler/pull/11
 
