@@ -357,6 +357,40 @@ func TestWithAttrs(t *testing.T) {
 	}
 }
 
+func TestWithAttrsChained(t *testing.T) {
+	buf := &bytes.Buffer{}
+	opts := &HandlerOptions{
+		HandlerOptions: slog.HandlerOptions{},
+		Color:          false,
+	}
+	handler := NewLogHandler(buf, opts)
+
+	// Call WithAttrs twice
+	handler1 := handler.WithAttrs([]slog.Attr{slog.String("first", "1")})
+	handler2 := handler1.WithAttrs([]slog.Attr{slog.String("second", "2")})
+
+	record := slog.Record{
+		Time:    time.Now(),
+		Level:   slog.LevelInfo,
+		Message: "test message",
+	}
+
+	buf.Reset()
+	err := handler2.Handle(context.Background(), record)
+	if err != nil {
+		t.Errorf("Handle() error = %v", err)
+	}
+
+	output := buf.String()
+	// Both attributes should be present
+	if !bytes.Contains(buf.Bytes(), []byte("[first:1]")) {
+		t.Errorf("Output should contain first attribute, got: %s", output)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("[second:2]")) {
+		t.Errorf("Output should contain second attribute, got: %s", output)
+	}
+}
+
 func TestWithGroup(t *testing.T) {
 	buf := &bytes.Buffer{}
 	opts := &HandlerOptions{
