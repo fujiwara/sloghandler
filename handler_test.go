@@ -34,7 +34,7 @@ func TestNewLogHandler(t *testing.T) {
 		t.Fatal("NewLogHandler did not return a *logHandler")
 	}
 
-	if h.opts != opts {
+	if h.opts.Color != opts.Color || h.opts.Source != opts.Source || h.opts.SourceDepth != opts.SourceDepth {
 		t.Errorf("handler options not set correctly, got %v, want %v", h.opts, opts)
 	}
 
@@ -53,13 +53,14 @@ func TestNewLogger(t *testing.T) {
 	opts := &HandlerOptions{
 		HandlerOptions: slog.HandlerOptions{Level: slog.LevelInfo},
 		Color:          false,
+		Source:         true,
 	}
 	logger := slog.New(NewLogHandler(w, opts))
 	logger = logger.With("", "foo", "bar", "baz")
 
 	logger.Info("test message", "", "extra", "key", 42)
 	output := buf.String()
-	if !bytes.Contains(buf.Bytes(), []byte("[INFO] [foo] [bar:baz] [extra] [key:42] test message")) {
+	if !bytes.Contains(buf.Bytes(), []byte("[INFO] [foo] [bar:baz] [handler_test.go:61] [extra] [key:42] test message")) {
 		t.Errorf("Logger output doesn't contain message, got: %s", output)
 	}
 }
@@ -521,6 +522,129 @@ func TestIntegration(t *testing.T) {
 	}
 	if !bytes.Contains(buf.Bytes(), []byte("[service:test]")) {
 		t.Errorf("Logger.With().Warn() output doesn't contain handler attribute, got: %s", output)
+	}
+}
+
+func TestSourceDepth(t *testing.T) {
+	tests := []struct {
+		name        string
+		sourceDepth int
+		filePath    string
+		want        string
+	}{
+		{
+			name:        "depth 0 - filename only",
+			sourceDepth: 0,
+			filePath:    "/home/user/project/src/main.go",
+			want:        "main.go",
+		},
+		{
+			name:        "depth 1 - parent and filename",
+			sourceDepth: 1,
+			filePath:    "/home/user/project/src/main.go",
+			want:        "src/main.go",
+		},
+		{
+			name:        "depth 2 - two parents and filename",
+			sourceDepth: 2,
+			filePath:    "/home/user/project/src/main.go",
+			want:        "project/src/main.go",
+		},
+		{
+			name:        "depth 3 - three parents and filename",
+			sourceDepth: 3,
+			filePath:    "/home/user/project/src/main.go",
+			want:        "user/project/src/main.go",
+		},
+		{
+			name:        "depth exceeding path length",
+			sourceDepth: 10,
+			filePath:    "/home/user/project/src/main.go",
+			want:        "home/user/project/src/main.go",
+		},
+		{
+			name:        "short path with depth 1",
+			sourceDepth: 1,
+			filePath:    "/main.go",
+			want:        "main.go",
+		},
+		{
+			name:        "relative path",
+			sourceDepth: 1,
+			filePath:    "src/main.go",
+			want:        "src/main.go",
+		},
+		{
+			name:        "negative depth defaults to 0",
+			sourceDepth: -1,
+			filePath:    "/home/user/project/src/main.go",
+			want:        "main.go",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &HandlerOptions{
+				Source:      true,
+				SourceDepth: tt.sourceDepth,
+			}
+			handler := NewLogHandler(nil, opts).(*logHandler)
+
+			result := handler.getFilePath(tt.filePath)
+			got := string(result)
+
+			if got != tt.want {
+				t.Errorf("getFilePath(%q) with depth %d = %q, want %q", tt.filePath, tt.sourceDepth, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSourceDepthDefaultValue(t *testing.T) {
+	tests := []struct {
+		name          string
+		source        bool
+		sourceDepth   int
+		expectedDepth int
+	}{
+		{
+			name:          "source enabled with default depth 0",
+			source:        true,
+			sourceDepth:   0,
+			expectedDepth: 0,
+		},
+		{
+			name:          "source enabled with explicit depth",
+			source:        true,
+			sourceDepth:   2,
+			expectedDepth: 2,
+		},
+		{
+			name:          "source disabled",
+			source:        false,
+			sourceDepth:   0,
+			expectedDepth: 0,
+		},
+		{
+			name:          "source enabled with explicit -1 (no change in NewLogHandler)",
+			source:        true,
+			sourceDepth:   -1,
+			expectedDepth: -1,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			opts := &HandlerOptions{
+				Source:      tt.source,
+				SourceDepth: tt.sourceDepth,
+			}
+			handler := NewLogHandler(nil, opts).(*logHandler)
+
+			if handler.opts.SourceDepth != tt.expectedDepth {
+				t.Errorf("NewLogHandler() SourceDepth = %d, want %d", handler.opts.SourceDepth, tt.expectedDepth)
+			}
+		})
 	}
 }
 

@@ -15,19 +15,19 @@ var (
 	// TimeFormat defines the timestamp format used in log output.
 	// Default is RFC3339 with milliseconds.
 	TimeFormat = "2006-01-02T15:04:05.000Z07:00"
-	
+
 	// DebugColor defines the color attribute for DEBUG level messages.
 	// Default is dark gray (color.FgHiBlack).
 	DebugColor = color.FgHiBlack
-	
+
 	// InfoColor defines the color attribute for INFO level messages.
 	// Default is 0 (no color). Set to a color.Attribute value to enable coloring.
 	InfoColor color.Attribute
-	
+
 	// WarnColor defines the color attribute for WARN level messages.
 	// Default is yellow (color.FgYellow).
 	WarnColor = color.FgYellow
-	
+
 	// ErrorColor defines the color attribute for ERROR level messages.
 	// Default is red (color.FgRed).
 	ErrorColor = color.FgRed
@@ -47,7 +47,12 @@ type HandlerOptions struct {
 	slog.HandlerOptions
 	// Color enables colored output based on log level when set to true.
 	// Colors can be customized using the global color variables.
-	Color bool
+	Color  bool
+	Source bool
+	// SourceDepth controls the number of parent directories to include in source file paths.
+	// Default is 0 (filename only). Set to 1 for parent/file.go, 2 for grandparent/parent/file.go, etc.
+	// Negative values default to 0.
+	SourceDepth int
 }
 
 type logHandler struct {
@@ -55,6 +60,7 @@ type logHandler struct {
 	preformatted []byte
 	mu           *sync.Mutex
 	w            io.Writer
+	sourceCache  sync.Map // Cache for formatted source file paths, keyed by path and depth
 }
 
 // NewLogHandler creates a new log handler that writes formatted log messages to w.
@@ -99,6 +105,10 @@ func (h *logHandler) Handle(ctx context.Context, record slog.Record) error {
 
 	if len(h.preformatted) > 0 {
 		buf.Write(h.preformatted)
+	}
+
+	if h.opts.Source {
+		h.printSource(buf, record)
 	}
 
 	record.Attrs(func(a slog.Attr) bool {

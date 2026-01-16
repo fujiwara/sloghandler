@@ -7,6 +7,7 @@ It provides colored text output with customizable formatting and metrics integra
 
 - Simple, readable text output format
 - Colorized output for all log levels (customizable)
+- Source file location display with configurable depth
 - Preservation of log attributes
 - Metrics integration: Export log volume and level metrics to monitoring systems
   - `prommetrics`: Prometheus metrics handler for tracking log statistics
@@ -73,6 +74,35 @@ Output format:
 ```
 
 ## Customization
+
+### Source Location
+
+You can display source file location (filename and line number) in log output:
+
+```go
+opts := &sloghandler.HandlerOptions{
+	HandlerOptions: slog.HandlerOptions{
+		Level: slog.LevelDebug,
+	},
+	Source: true,      // Enable source file display
+	SourceDepth: 1,    // Include parent directory (e.g., "pkg/main.go")
+}
+handler := sloghandler.NewLogHandler(os.Stdout, opts)
+```
+
+Output:
+
+```
+2023-05-09T12:34:56.789+09:00 [INFO] [main.go:42] Server started
+2023-05-09T12:34:56.790+09:00 [INFO] [pkg/server.go:15] Listening for connections
+```
+
+#### SourceDepth Options
+
+- `0` (default): Show filename only (`main.go`)
+- `1`: Show parent directory and filename (`pkg/main.go`)
+- `2`: Show two levels (`src/pkg/main.go`)
+- etc.
 
 ### Color Configuration
 
