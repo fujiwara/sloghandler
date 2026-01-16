@@ -1,12 +1,16 @@
 package sloghandler
 
 import (
-	"fmt"
 	"path/filepath"
 )
 
+type sourceCacheKey struct {
+	path  string
+	depth int
+}
+
 func (h *logHandler) getFilePath(path string) []byte {
-	cacheKey := fmt.Sprintf("%s:%d", path, h.opts.SourceDepth)
+	cacheKey := sourceCacheKey{path: path, depth: h.opts.SourceDepth}
 	if cached, ok := h.sourceCache.Load(cacheKey); ok {
 		return cached.([]byte)
 	}

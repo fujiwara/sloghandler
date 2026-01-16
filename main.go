@@ -60,7 +60,7 @@ type logHandler struct {
 	preformatted []byte
 	mu           *sync.Mutex
 	w            io.Writer
-	sourceCache  sync.Map // Cache for source location
+	sourceCache  sync.Map // Cache for formatted source file paths, keyed by path and depth
 }
 
 // NewLogHandler creates a new log handler that writes formatted log messages to w.
