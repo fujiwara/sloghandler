@@ -137,7 +137,8 @@ func (h *logHandler) Handle(ctx context.Context, record slog.Record) error {
 }
 
 func (h *logHandler) WithAttrs(attrs []slog.Attr) slog.Handler {
-	preformatted := []byte{}
+	preformatted := make([]byte, len(h.preformatted))
+	copy(preformatted, h.preformatted)
 	for _, a := range attrs {
 		if a.Key == "" {
 			preformatted = append(preformatted, fmt.Sprintf(" [%v]", a.Value)...)
