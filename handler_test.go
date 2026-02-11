@@ -60,7 +60,7 @@ func TestNewLogger(t *testing.T) {
 
 	logger.Info("test message", "", "extra", "key", 42)
 	output := buf.String()
-	if !bytes.Contains(buf.Bytes(), []byte("[INFO] [foo] [bar:baz] [handler_test.go:61] [extra] [key:42] test message")) {
+	if !bytes.Contains(buf.Bytes(), []byte("[INFO] [foo] [bar:baz] [handler_test.go:61] test message [extra] [key:42]")) {
 		t.Errorf("Logger output doesn't contain message, got: %s", output)
 	}
 }
