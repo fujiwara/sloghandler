@@ -69,7 +69,7 @@ Output format:
 2023-05-09T12:34:56.790+09:00 [INFO] This is an info message
 2023-05-09T12:34:56.791+09:00 [WARN] This is a warning message
 2023-05-09T12:34:56.792+09:00 [ERROR] This is an error message
-2023-05-09T12:34:56.793+09:00 [INFO] [port:8080] [environment:production] Server started
+2023-05-09T12:34:56.793+09:00 [INFO] Server started [port:8080] [environment:production]
 2023-05-09T12:34:56.794+09:00 [INFO] [component:server] [id:main] Listening for connections
 ```
 

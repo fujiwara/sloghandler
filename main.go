@@ -111,6 +111,8 @@ func (h *logHandler) Handle(ctx context.Context, record slog.Record) error {
 		h.printSource(buf, record)
 	}
 
+	fmt.Fprintf(buf, " %s", record.Message)
+
 	record.Attrs(func(a slog.Attr) bool {
 		if a.Key == "" {
 			fmt.Fprintf(buf, " [%v]", a.Value)
@@ -120,7 +122,7 @@ func (h *logHandler) Handle(ctx context.Context, record slog.Record) error {
 		return true
 	})
 
-	fmt.Fprintf(buf, " %s\n", record.Message)
+	buf.WriteByte('\n')
 
 	// Apply color only once at the end if needed
 	h.mu.Lock()
