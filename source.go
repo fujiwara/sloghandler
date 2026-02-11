@@ -1,6 +1,9 @@
 package sloghandler
 
 import (
+	"bytes"
+	"fmt"
+	"log/slog"
 	"path/filepath"
 )
 
@@ -39,4 +42,11 @@ func (h *logHandler) getFilePath(path string) []byte {
 	result := []byte(filepath.Join(parts...))
 	h.sourceCache.Store(cacheKey, result)
 	return result
+}
+
+func (h *logHandler) printSource(buf *bytes.Buffer, record slog.Record) {
+	if s := record.Source(); s != nil {
+		file := h.getFilePath(s.File)
+		fmt.Fprintf(buf, " [%s:%d]", file, s.Line)
+	}
 }

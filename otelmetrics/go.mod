@@ -1,8 +1,6 @@
 module github.com/fujiwara/sloghandler/otelmetrics
 
-go 1.23.0
-
-toolchain go1.24.3
+go 1.25
 
 require (
 	go.opentelemetry.io/otel v1.36.0

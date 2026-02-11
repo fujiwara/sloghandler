@@ -2,7 +2,6 @@ package sloghandler
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"log/slog"
 	"os"
@@ -60,7 +59,7 @@ func TestNewLogger(t *testing.T) {
 
 	logger.Info("test message", "", "extra", "key", 42)
 	output := buf.String()
-	if !bytes.Contains(buf.Bytes(), []byte("[INFO] [foo] [bar:baz] [handler_test.go:61] test message [extra] [key:42]")) {
+	if !bytes.Contains(buf.Bytes(), []byte("[INFO] [foo] [bar:baz] [handler_test.go:60] test message [extra] [key:42]")) {
 		t.Errorf("Logger output doesn't contain message, got: %s", output)
 	}
 }
@@ -88,7 +87,7 @@ func TestEnabled(t *testing.T) {
 			Color:          false,
 		}
 		handler := NewLogHandler(buf, opts).(*logHandler)
-		got := handler.Enabled(context.Background(), tt.level)
+		got := handler.Enabled(t.Context(), tt.level)
 		if got != tt.want {
 			t.Errorf("Enabled(%v) with handler level %v = %v, want %v", tt.level, tt.handlerLevel, got, tt.want)
 		}
@@ -276,7 +275,7 @@ func TestHandle(t *testing.T) {
 				recordWithAttrs.AddAttrs(attr)
 			}
 
-			err := handler.Handle(context.Background(), recordWithAttrs)
+			err := handler.Handle(t.Context(), recordWithAttrs)
 			if err != nil {
 				t.Errorf("Handle() error = %v", err)
 				return
@@ -343,7 +342,7 @@ func TestWithAttrs(t *testing.T) {
 	}
 
 	buf.Reset()
-	err := newHandler.Handle(context.Background(), record)
+	err := newHandler.Handle(t.Context(), record)
 	if err != nil {
 		t.Errorf("Handle() error = %v", err)
 	}
@@ -376,7 +375,7 @@ func TestWithAttrsChained(t *testing.T) {
 	}
 
 	buf.Reset()
-	err := handler2.Handle(context.Background(), record)
+	err := handler2.Handle(t.Context(), record)
 	if err != nil {
 		t.Errorf("Handle() error = %v", err)
 	}

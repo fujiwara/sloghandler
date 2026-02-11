@@ -1,7 +1,6 @@
 package otelmetrics_test
 
 import (
-	"context"
 	"log/slog"
 	"os"
 	"testing"
@@ -38,7 +37,7 @@ func setupProvider(t *testing.T) (*sdkmetric.MeterProvider, *sdkmetric.ManualRea
 }
 
 func collectMetrics(t *testing.T, reader *sdkmetric.ManualReader) map[string]int64 {
-	ctx := context.Background()
+	ctx := t.Context()
 	var rm metricdata.ResourceMetrics
 	if err := reader.Collect(ctx, &rm); err != nil {
 		t.Logf("Failed to collect final metrics: %v", err)
@@ -77,7 +76,7 @@ func collectMetrics(t *testing.T, reader *sdkmetric.ManualReader) map[string]int
 
 // Helper to collect metrics with labels as a map[labelKey]count
 func collectMetricsWithLabels(t *testing.T, reader *sdkmetric.ManualReader) map[string]int64 {
-	ctx := context.Background()
+	ctx := t.Context()
 	var rm metricdata.ResourceMetrics
 	if err := reader.Collect(ctx, &rm); err != nil {
 		t.Logf("Failed to collect final metrics: %v", err)
