@@ -39,6 +39,10 @@ Both follow the same wrapper-handler pattern: they embed `slog.Handler`, interce
 
 These are **independent Go modules** with their own `go.mod` — they cannot import or be imported by the root module directly.
 
+## TODO for v1
+
+- Remove deprecated `HandlerOptions.Source` field and related backward-compatibility logic in `Handle()`. Use `slog.HandlerOptions.AddSource` only. Also remove `TestDeprecatedSourceField` test.
+
 ## CI
 
 CI runs `go test -race ./...` against Go 1.25 and 1.26. Subpackage tests are not in CI matrix (they have separate modules).

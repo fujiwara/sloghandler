@@ -50,17 +50,38 @@ func TestNewLogger(t *testing.T) {
 	buf := &bytes.Buffer{}
 	w := io.MultiWriter(buf, os.Stderr)
 	opts := &HandlerOptions{
-		HandlerOptions: slog.HandlerOptions{Level: slog.LevelInfo},
-		Color:          false,
-		Source:         true,
+		HandlerOptions: slog.HandlerOptions{
+			Level:     slog.LevelInfo,
+			AddSource: true,
+		},
+		Color: false,
 	}
 	logger := slog.New(NewLogHandler(w, opts))
 	logger = logger.With("", "foo", "bar", "baz")
 
 	logger.Info("test message", "", "extra", "key", 42)
 	output := buf.String()
-	if !bytes.Contains(buf.Bytes(), []byte("[INFO] [foo] [bar:baz] [handler_test.go:60] test message [extra] [key:42]")) {
-		t.Errorf("Logger output doesn't contain message, got: %s", output)
+	if !bytes.Contains(buf.Bytes(), []byte("[INFO] [foo] [bar:baz] [handler_test.go:")) {
+		t.Errorf("Logger output doesn't contain message with source, got: %s", output)
+	}
+	if !bytes.Contains(buf.Bytes(), []byte("test message [extra] [key:42]")) {
+		t.Errorf("Logger output doesn't contain message with attrs, got: %s", output)
+	}
+}
+
+func TestDeprecatedSourceField(t *testing.T) {
+	buf := &bytes.Buffer{}
+	w := io.MultiWriter(buf, os.Stderr)
+	opts := &HandlerOptions{
+		HandlerOptions: slog.HandlerOptions{Level: slog.LevelInfo},
+		Color:          false,
+		Source:         true, // deprecated field should still work
+	}
+	logger := slog.New(NewLogHandler(w, opts))
+	logger.Info("deprecated source test")
+	output := buf.String()
+	if !bytes.Contains(buf.Bytes(), []byte("[handler_test.go:")) {
+		t.Errorf("Deprecated Source field should still enable source output, got: %s", output)
 	}
 }
 

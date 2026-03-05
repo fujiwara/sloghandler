@@ -47,7 +47,9 @@ type HandlerOptions struct {
 	slog.HandlerOptions
 	// Color enables colored output based on log level when set to true.
 	// Colors can be customized using the global color variables.
-	Color  bool
+	Color bool
+	// Deprecated: Use slog.HandlerOptions.AddSource instead.
+	// TODO: Remove this field in v1.
 	Source bool
 	// SourceDepth controls the number of parent directories to include in source file paths.
 	// Default is 0 (filename only). Set to 1 for parent/file.go, 2 for grandparent/parent/file.go, etc.
@@ -107,7 +109,7 @@ func (h *logHandler) Handle(ctx context.Context, record slog.Record) error {
 		buf.Write(h.preformatted)
 	}
 
-	if h.opts.Source {
+	if h.opts.Source || h.opts.AddSource {
 		h.printSource(buf, record)
 	}
 
