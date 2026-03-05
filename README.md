@@ -82,9 +82,9 @@ You can display source file location (filename and line number) in log output:
 ```go
 opts := &sloghandler.HandlerOptions{
 	HandlerOptions: slog.HandlerOptions{
-		Level: slog.LevelDebug,
+		Level:     slog.LevelDebug,
+		AddSource: true,   // Enable source file display
 	},
-	Source: true,      // Enable source file display
 	SourceDepth: 1,    // Include parent directory (e.g., "pkg/main.go")
 }
 handler := sloghandler.NewLogHandler(os.Stdout, opts)
