@@ -1,5 +1,9 @@
 # Changelog
 
+## [v0.1.1](https://github.com/fujiwara/sloghandler/compare/v0.1.0...v0.1.1) - 2026-09-19
+- Deprecate HandlerOptions.Source in favor of AddSource by @fujiwara in https://github.com/fujiwara/sloghandler/pull/27
+- Rename CLAUDE.md to AGENTS.md by @fujiwara in https://github.com/fujiwara/sloghandler/pull/32
+
 ## [v0.1.0](https://github.com/fujiwara/sloghandler/compare/v0.0.6...v0.1.0) - 2026-02-11
 - Move per-record attributes after message in log output by @fujiwara in https://github.com/fujiwara/sloghandler/pull/22
 - Bump actions/setup-go from 5.6.0 to 6.2.0 by @dependabot[bot] in https://github.com/fujiwara/sloghandler/pull/21
